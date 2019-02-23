@@ -1,0 +1,319 @@
+#!/bin/sh
+
+
+# ================================================================================================================= #
+# Author:                                                                                                           #
+#                                                                                                                   #
+#    Irsan Winarto                                                                                                  #
+#    www.github.com/IWinarto                                                                                        #
+#                                                                                                                   #
+# Description:                                                                                                      #
+#                                                                                                                   #
+#    This POSIX-compliant Shell script sends HTTP GET requests to ANU's QRNG to get random non-negative integers    #
+# printed out as numbers in some specified base. ANU is The Australian National University, and QRNG stands for     #
+# Quantum Random Number Generator.                                                                                  #
+#                                                                                                                   #
+# Usage:                                                                                                            #
+#                                                                                                                   #
+#  qrng [-h | -b <base>] [minimum possible number] <maximum possible number> <amount of random numbers to request>  #
+#                                                                                                                   #
+#       * The -h option prints out this usage.                                                                      #
+#                                                                                                                   #
+#       * If the -b option is given, the random numbers printed out will be in the given base. The specified base   #
+#         must be an integer at least equal to 2 and at most 16. If this option is not specified, the default base  #
+#         is 10.                                                                                                    #
+#                                                                                                                   #
+#       * [minimum possible number] is the minimum possible value of any random number requested. It must at least  #
+#         be equal to 0. If this is not specified, 0 is assumed.                                                    #
+#                                                                                                                   #
+#       * <maximum possible number> argument is the maximum possible value of any random number requested. It must  #
+#         not exceed QRNG's limit 16**2048 - 1 (16 raised to the power of 2048, and subtracted by 1), and must at   #
+#         least be 1.                                                                                               #
+#                                                                                                                   #
+#       * The final argument is the amount of random numbers to be requested (at least 0). If this argument is 0,   #
+#         then this script will not make requests at all, and the exit status is set to 0.                          #
+#                                                                                                                   #
+#       * The minimum possible number, maximum possible number, and amount of random numbers to request can be      #
+#         given as hexadecimal numbers and/or decimal numbers. A hexadecimal argument must be prefixed by the       #
+#         characters 0x (in that order) with the hexadecimal number following the character x immediately.          #
+#         Otherwise, the argument is expected to be a decimal integer.                                              #
+#                                                                                                                   #
+# Output:                                                                                                           #
+#                                                                                                                   #
+#    All random numbers received (as either non-negative integers or hexadecimal numbers if -h is specified) are    #
+# printed to the standard output, with each number on a separate line, and hexadecimal numbers are printed without  #
+# any prefix.                                                                                                       #
+#    However, if the latest request to ANU's QRNG fails, then all previously received random numbers (if there are  #
+# any) will have been printed out, but this script will also end with the leftover amount of random numbers not     #
+# requested anymore. In this case, an error message will be printed to the standard error containing the remaining  #
+# amount of random numbers failed to be requested, as the last characters printed and preceded by a space, and the  #
+# exit status will be set to 2.                                                                                     #
+#                                                                                                                   #
+# Exit Status:                                                                                                      #
+#                                                                                                                   #
+#    0 - success                                                                                                    #
+#    1 - invalid command-line arguments                                                                             #
+#    2 - latest request to ANU's QRNG failed to return random numbers                                               #
+#                                                                                                                   #
+# ================================================================================================================= #
+
+
+# if there is any error do not continue the script
+set -e
+
+
+# POSIX bc does NOT have BC_LINE_LENGTH environment variable; thus, this workaround to remove \ then newline
+abc() {
+    bc | sed -E ':a;N;$!ba; s/\\\n//g'
+}
+
+
+check_request() {
+    # $1 is a JSON string returned by ANU's QRNG
+    # $2 is the remaining amount of integers failed to be requested
+    local success=$(echo "$1" | sed -E 's/.*"success":([^},":]+).*/\1/')
+    if [ $success != true ]; then
+        printf "%s\n" \
+             "qrng error: the latest request to ANU's QRNG failed to return random numbers" \
+             "            remaining amount of integers not received is $2" >&2
+        exit 2
+    fi
+}
+
+
+wrap_numbers() {
+    # This is a helper function for request_random_non_negative_numbers. It makes sure that all non-negative integers
+    # in $numbers are at least $minimum and at most $mod - 1.
+    #
+    # QRNG returns numbers that are either between 0 and 255, or 0 and 65535, or 0 and 16**(block_size * 2) - 1. Thus, 
+    # even if the user specifies the minimum possible value to be 0, QRNG does not provide an API that allows the user 
+    # to specify the maximum possible value other than the aformentioned upper limits. This is the reason why this 
+    # function is necessary to provide an API that gives the user the freedom to choose a minimum and a maximum (with 
+    # the caveat that both min and max are at least 0 and min < max).
+
+    # The "else" part can achieve the same result as the "if" part but it's more expensive; so skip it if unnecessary
+    if [ $minimum -eq 0 ]; then
+        { echo "obase=$obase; ibase=$ibase" && printf "%s %% $mod\n" $numbers; } | abc
+
+    else
+        echo "
+            obase=$obase 
+            ibase=$ibase
+
+            define w(x) {
+                while ( x < $minimum ) {
+                    x = x + $minimum
+                    x = x % $mod
+                }
+
+                if ( x > $maximum ) {
+                    x = x % $mod
+                    if ( x < $minimum ) 
+                        x = w(x)
+                }
+
+                return x
+            }
+            
+            /* instantiate array a[]; numbers are expected to be on a separate line each */
+            $(echo "$numbers" | awk '{printf "a[%d]=%s\n", NR - 1, $1}')
+
+            for (i = 0; i < $(echo "$numbers" | wc -l); ++i) 
+                w(a[i])
+        " | abc
+    fi
+}
+
+
+request_random_non_negative_numbers() {
+    # This requests at most max(ISO C signed long)-many random numbers between $minimum and $mod - 1 inclusive.
+
+    local obase=$1                                      # output base of bc command
+    local amount=$2                                     # number of random integers to request <= 2**31 - 1
+    local minimum=${3:-0}                               # minimum possible value of any random integer (default 0)
+    local mod=$(echo "$4 + 1" | abc)                    # maximum possible value of any random integer + 1
+    local data_type=$5                                  # QRNG data type is either uint8, uint16, or hex16
+    local block_size_request=${6:+&size=$6}             # if given, then equal to &size=$5 (must not exceed 1024)
+
+    # input base of bc command
+    [ "$data_type" = hex16 ] && local ibase=16 || local ibase=10
+    # make sure that the base of mod's value is ibase
+    mod=$(echo "obase=$ibase; ibase=10; $mod" | abc)
+
+    until is_zero $amount; do
+
+        # ANU's QRNG can only return a maximum of 1024 random numbers per request
+        local length=$(( $amount > 1024 ? 1024 : $amount ))
+
+        # request a JSON containing length-many random numbers
+        local url="https://qrng.anu.edu.au/API/jsonI.php?length=${length}&type=${data_type}${block_size_request}"
+        local json=$(curl -sS -X GET "$url")
+
+        # if the latest request failed, this will exit with status 2
+        check_request "$json" "$amount"
+
+        # extract the numbers in the data array from the JSON; each random number is on a separate line
+        local numbers=$(echo "$json" | sed -E 's/[^[]*\[//; s/\].*//; s/"//g; s/,/\n/g')
+
+        # make sure hexadecimal letter-digits are in upper-case letters for bc to process
+        [ "$data_type" = hex16 ] && numbers=$(echo "$numbers" | tr a-f A-F)
+
+        # make sure that numbers are between $minimum and $mod - 1 inclusive; this prints numbers to stdout
+        wrap_numbers 
+
+        # update number of random intergers remaining to request
+        local actual_length=$(echo "$json" | sed -E 's/.*"length":([^,]+).*/\1/')
+        amount=$(( $amount - $actual_length ))
+    done
+}
+
+
+calc_block_size() {
+    local hex=$(echo "ibase=A; obase=16; $1" | abc)
+    number_of_hex_digits=${#hex}
+
+    # The number of "blocks". (A block is a pair of hex digits.)
+    echo $(( ($number_of_hex_digits + 1) / 2 ))
+}
+
+
+is_not_non_negative() {
+    expr "$1" : '^0$\|[1-9][0-9]*$' >/dev/null && return 1 || return 0
+}
+
+
+is_zero() {
+    expr "$1" : '^0$' >/dev/null && return 0 || return 1
+}
+
+
+hex_to_int() {
+    # if $1 is a hexadecimal number denoted by the prefix 0x, then convert it into decimal; otherwise, echo it
+    if expr "$1" : '^0x' >/dev/null; then
+        local number=$(echo ${1#0x} | tr 'a-f' 'A-F')
+        echo "obase=10; ibase=16; $number" | abc
+    else
+        echo "$1"
+    fi
+}
+
+
+err_usage() {
+    echo "qrng error: $*" >&2
+    exit 1
+}
+
+
+extract_arguments() {
+    # default base of random numbers is 10
+    base=10
+
+    while getopts ':hb:' opt "$@"; do
+        case $opt in
+            b)
+                if  is_not_non_negative "$OPTARG" || [ "$OPTARG" -lt 2 ] || [ "$OPTARG" -gt 16 ]; then
+                    err_usage "the base must be a positive integer at least equal to 2 and at most 16" 
+                else
+                    base=$OPTARG
+                    shift 2
+                fi
+                ;;
+
+            h)
+                echo 'Usage: qrng [-b <base in the range [2, 16]> | -n] <max possible number at most 16**2048 - 1>' \
+                     '<number of random integers to request>' >&2
+                exit 0
+                ;;
+
+            *)
+                err_usage "$OPTARG is not a valid option"
+                ;;
+        esac
+    done
+
+    for arg in "$@"; do
+        [ -z "$arg" ] && err_usage "one of the non-optional arguments is empty" 
+    done
+
+    # NOTE: arguments MUST have been shifted above
+    if [ $# -eq 2 ]; then
+        max_integer=$(hex_to_int $1)
+        amount=$(hex_to_int $2)
+    elif [ $# -eq 3 ]; then
+        min_integer=$(hex_to_int $1)
+        max_integer=$(hex_to_int $2)
+        amount=$(hex_to_int $3)
+    else
+        err_usage "number of non-optional arguments must be at least 2 and at most 3" 
+    fi
+
+    # using 'abc' in all the tests below is necessary because this script accepts arbritrarily large arguments
+    if [ ! -z "$min_integer" ] && is_not_non_negative "$min_integer"; then
+        err_usage "minimum possible value of random numbers must be at least 0"
+    fi
+
+    if is_not_non_negative "$max_integer" || [ $(echo "$max_integer < 1" | abc) -eq 1 ]; then
+        err_usage "maximum possible value of random numbers must be at least 1"
+    fi
+
+    if [ $(echo "$min_integer >= $max_integer" | abc) -eq 1 ]; then
+        err_usage "the minimum possible value must be strictly less than the maximum"
+    fi
+
+    if is_not_non_negative "$amount"; then
+        err_usage "the amount of random numbers requested must be at least 0"
+    fi
+
+    # do nothing if requested 0 amount 
+    is_zero "$amount" && exit 0
+
+    # set request arguments for ANU's QRNG API; note that $max_integer can be bigger than POSIX precision
+    if [ ${#max_integer} -le 3 ] && [ "$max_integer" -le 255 ]; then
+        data_type='uint8'
+    elif [ ${#max_integer} -le 5 ] && [ "$max_integer" -le 65535 ]; then
+        data_type='uint16'
+    else
+        data_type='hex16'
+        block_size=$(calc_block_size "$max_integer")
+
+        # check if maximum number of hex digit pairs is exceeded
+        if [ "$block_size" -gt 1024 ]; then
+            err_usage 'maximum possible random number must not exceed 16**2048 - 1' 
+        fi
+    fi
+}
+
+
+# get arguments either from stdin if it's NOT connected to a tty, or from the command-line arguments
+if [ ! -t 0 ]; then
+    # read -r first second third
+    # extract_arguments first second third
+    read -r arguments
+    extract_arguments $arguments
+else
+    extract_arguments "$@"
+fi
+
+
+# Shell's maximum integer value is at least 2**31 - 1 (as defined by POSIX.1-2017 to be max value of ISO C signed long)
+POSIX_PRECISION=2147483647
+
+
+# Use 'bc' for arbritrary precision calculation to request ANY amount (even exceeding Shell variable limit)
+until is_zero "$amount"; do
+    chunk_size=$( \
+        # POSIX bc does NOT support 'else' (eye-rolled)
+        echo " 
+            if ($amount >= $POSIX_PRECISION) $POSIX_PRECISION
+            if ($amount < $POSIX_PRECISION) $amount
+        " | abc \
+    )
+
+    request_random_non_negative_numbers "$base" "$chunk_size" "$min_integer" "$max_integer" "$data_type" "$block_size"
+
+    amount=$(echo "$amount - $chunk_size" | abc)
+done 
+
+
+# successful
+exit 0
