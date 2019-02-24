@@ -71,8 +71,7 @@ decimal integer.
 
 ## Non-POSIX Requirement
 
-For POSIX-compliant systems with the usual POSIX programs installed, only `curl` has to be installed before this script
-can be run.
+Only `curl` has to be installed on POSIX systems with the usual POSIX programs already installed.
 
 ## Known POSIX Compatibility Issues
 
