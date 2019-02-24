@@ -45,7 +45,7 @@ the the limit.
 
 ## Usage:
 
-qrng [-h | -b \<base>] [minimum possible number] \<maximum possible number> \<amount of random numbers to request>
+`qrng [-h | -b \<base>] [minimum possible number] \<maximum possible number> \<amount of random numbers to request>`
 
 * The -h option prints out this usage.
 
