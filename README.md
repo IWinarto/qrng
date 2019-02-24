@@ -4,7 +4,7 @@
 
 This POSIX-compliant Shell script sends HTTP GET requests to [ANU's QRNG](https://qrng.anu.edu.au/) to get random
 non-negative integers printed out as numbers in some user-specified base. Tests seem to suggest that the distribution of
-the numbers are ["truly random"](http://qrng.anu.edu.au/FAQ.php).
+the numbers are "[truly random](http://qrng.anu.edu.au/FAQ.php)".
 
 ANU is The Australian National University, and QRNG stands for Quantum Random Number Generator.
 
@@ -64,8 +64,8 @@ QRNG's limit ![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1
 script will not make requests at all, and the exit status is set to 0.                          
 
 * The minimum possible number, maximum possible number, and amount of random numbers to request can be given as
-hexadecimal numbers and/or decimal numbers. A hexadecimal argument must be prefixed by the characters 0x (in that
-order) with the hexadecimal number following the character x immediately. Otherwise, the argument is expected to be a
+hexadecimal numbers and/or decimal numbers. A hexadecimal argument must be prefixed by the characters `0x` (in that
+order) with the hexadecimal number following the character `x` immediately. Otherwise, the argument is expected to be a
 decimal integer.
 
 ## Non-POSIX Requirement
