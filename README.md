@@ -24,7 +24,8 @@ where, ![](https://latex.codecogs.com/gif.latex?$1\leq&space;\\text{block\\_size
 means users cannot request a custom range that is not one of the three above.
 
 This script enables the user to specify a custom range of random non-negative numbers up to the QRNG limit 
-![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$) with one very important property:
+![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$) with one very important property, assuming the
+underlying distribution is truly random:
 
 > the custom range that the user specified is still uniformly random, i.e. no bias!
 
