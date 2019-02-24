@@ -11,17 +11,18 @@ ANU is The Australian National University, and QRNG stands for Quantum Random Nu
 
 ### Problem 1
 
-The [QRNG@ANU JSON API](https://qrng.anu.edu.au/API/api-demo.php) only returns random non-negative numbers in either of
-the following ranges only:
+The [QRNG@ANU JSON API](https://qrng.anu.edu.au/API/api-demo.php) returns random non-negative numbers in either one of 
+the following ranges only per request:
 
-* $[0, 255]$ 
-* $[0, 65535]$ 
-* $[0, 16^{2 \times block\_size} - 1]$
+* ![]{https://latex.codecogs.com/gif.latex?\left[0,&space;255&space;\right&space;]}
+* ![]{https://latex.codecogs.com/gif.latex?\left[0,&space;65535&space;\right&space;]}
+* ![]{https://latex.codecogs.com/gif.latex?\left[0,&space;16^{2048}&space;-1&space;\right&space;]}
 
-where, $1 <= block\_size <= 1024$. This means the user cannot request a custom range of random non-negative numbers.
+where, ![]{https://latex.codecogs.com/gif.latex?$1&space;\leq&space;\text{block\_size}&space;\leq&space;1024$}. This 
+means the user cannot request a custom range of random non-negative numbers.
 
 This script enables the user to specify a custom range of random non-negative numbers up to the QRNG limit 
-$16^{2048} -1$, with one very important property:
+![]{https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$} with one very important property:
 
 > the custom range that the user specified is still uniformly random, i.e. no bias!
 
@@ -37,13 +38,14 @@ base-16. This script extends the number of bases available by providing base-2 u
 ### Problem 3
 
 POSIX.1-2017 defines the maximum limit of positive integer of any expression to be the maximum of ISO C `signed long`
-type, which is at least $2^{31} - 1$. However, QRNG can provide random numbers that are as large as $16^2048 - 1$. This
-script utilizes POSIX `bc` to do arbitrary precision calculations to overcome the the limit.
+type, which is at least ![]{https://latex.codecogs.com/gif.latex?$2^{31}-1$}. However, QRNG can provide random numbers 
+that are as large as $16^2048 - 1$. This script utilizes POSIX `bc` to do arbitrary precision calculations to overcome 
+the the limit.
 
 
 ## Usage:
 
-qrng [-h | -b <base>] [minimum possible number] \<maximum possible number> \<amount of random numbers to request>
+qrng [-h | -b \<base>] [minimum possible number] \<maximum possible number> \<amount of random numbers to request>
 
 * The -h option prints out this usage.
 
@@ -54,7 +56,7 @@ integer at least equal to 2 and at most 16. If this option is not specified, the
 \0. If this is not specified, 0 is assumed. 
 
 * \<maximum possible number> argument is the maximum possible value of any random number requested. It must not exceed
-QRNG's limit 16**2048 - 1 (16 raised to the power of 2048, and subtracted by 1), and must at least be equal to 1.                                                                                               
+QRNG's limit ![]{https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$}, and must at least be equal to 1.
 
 * The final argument is the amount of random numbers to be requested (at least 0). If this argument is 0,  then this
 script will not make requests at all, and the exit status is set to 0.                          
