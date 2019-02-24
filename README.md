@@ -16,9 +16,10 @@ the following ranges only per request:
 
 * ![](https://latex.codecogs.com/gif.latex?\left[0,&space;255&space;\right&space;])
 * ![](https://latex.codecogs.com/gif.latex?\left[0,&space;65535&space;\right&space;])
-* ![](https://latex.codecogs.com/gif.latex?$[0,16^{2\times&space;block\\_size}-1]$)
+* ![](https://latex.codecogs.com/gif.latex?$[0,16^{2\times\\text{block\\_size}}-1]$)
 
-where, ![](https://latex.codecogs.com/gif.latex?$1\leq&space;block\\_size\leq1024$). This 
+where, ![](https://latex.codecogs.com/gif.latex?$1\leq&space;\\text{block\\_size}\leq1024$), and 
+![](https://latex.codecogs.com/gif.latex?$\\text{block\\_size}$) is the number of pairs of hexadecimal digits. This 
 means the user cannot request a custom range of random non-negative numbers.
 
 This script enables the user to specify a custom range of random non-negative numbers up to the QRNG limit 
