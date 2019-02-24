@@ -81,6 +81,34 @@ check_request() {
 }
 
 
+initialize_parameters() {
+    # This defines the parameters needed for function wrap_numbers. These definitions can instead be placed in that
+    # function wrap_numbers, but it would be inefficient to do so, because these parameters are constant, but
+    # function wrap_numbers is called in a loop (potentially many, many times). So, this initialization function is 
+    # intended to be called outside that loop.
+    #
+    # The description of these parameters can be found in function wrap_numbers.
+    #
+    # Note: the only edge case for q is that q can be -1, but it is still correct; therefore, allowed
+
+    n=$(echo "$maximum - $minimum + 1" | abc)
+    q=$(echo "($minimum / $n) * $n - 1" | abc)      
+    p=$(echo "(($abs_max - $maximum) / $n) * $n + $maximum" | abc)
+    r=$(echo "($minimum - 1 - $q) + ($abs_max - $p)" | abc)
+
+    # calculation in bc will be performed in base $ibase because it is the base of random numbers returned by ANU QRNG
+    if [ "$obase" -ne 10 ]; then
+        minimum=$(echo "obase=$ibase; ibase=10; $minimum" | abc)
+        maximum=$(echo "obase=$ibase; ibase=10; $maximum" | abc)
+        abs_max=$(echo "obase=$ibase; ibase=10; $abs_max" | abc)
+        n=$(echo "obase=$ibase; ibase=10; $n" | abc)
+        q=$(echo "obase=$ibase; ibase=10; $q" | abc)
+        p=$(echo "obase=$ibase; ibase=10; $p" | abc)
+        r=$(echo "obase=$ibase; ibase=10; $r" | abc)
+    fi
+}
+
+
 wrap_numbers() {
     # This is a helper function for request_random_non_negative_numbers. It makes sure that all non-negative integers
     # in $numbers are at least $minimum and at most $maximum.
@@ -88,16 +116,11 @@ wrap_numbers() {
     # QRNG returns numbers that are either between 0 and 255, or 0 and 65535, or 0 and 16**(block_size * 2) - 1. Thus, 
     # the QRNG JSON API does not provide the capability to specify minimum and maximum numbers. This is the reason why 
     # this function is necessary to provide an API that gives the user the freedom to choose a minimum and a maximum, 
-    # and at the same time guarantees that the range [minimum, maximum] is uniformly random.
+    # and at the same time guarantees that the range [minimum, maximum] is still uniformly random.
     #
     # This function does not provide any guarantee to the result if minimum is not strictly less than maximum, or 
     # minimum and maximum are not non-negative integers.
-
-    # make sure that the base of the following parameters are $ibase
-    abs_max=$(echo "obase=$ibase; ibase=10; $abs_max" | abc)
-    minimum=$(echo "obase=$ibase; ibase=10; $minimum" | abc)
-    maximum=$(echo "obase=$ibase; ibase=10; $maximum" | abc)
-
+    #
     # Check the documentation on the GitHub repo to understand how this wrapping retains uniform randomness.
     #
     # The following describes the core of the algorithm:
@@ -140,46 +163,53 @@ wrap_numbers() {
     #       random numbers are dropped; if 0 < r < n, r random numbers are dropped; and if r >=n, at most 2*(n-1) - n = 
     #       n - 2 random numbers are dropped.
 
+    # this is the number of times function w() in the bc program is called; it needs to be converted into the input base
+    if [ "$ibase" -ne 10 ]; then
+        number_of_numbers=$(echo "$numbers" | wc -l)
+        number_of_numbers=$(echo "obase=$ibase; ibase=10; $number_of_numbers" | abc)
+    fi
+
+    # map the numbers such that uniform randomness is conserved
     numbers=$( \
         echo "
-            obase=$obase 
+            obase=$obase
             ibase=$ibase
 
-            n = $maximum - $minimum + 1
-            q = ($minimum / n) * n - 1
-            p = (($abs_max - $maximum) / n) * n + $maximum
-
-            r = ($minimum - 1 - q) + ($abs_max - p)
-
             define w(x) {
-                if (x <= q)
-                    return ((x % n) + $minimum)
+                if (x >= $minimum)
+                    if (x <= $maximum)
+                        return x
+
+                if (x <= $q)
+                    return ((x % $n) + $minimum)
 
                 if (x > $maximum)
-                    if (x <= p)
-                        return (((x - $maximum - 1) % n) + $minimum)
+                    if (x <= $p)
+                        return (((x - $maximum - 1) % $n) + $minimum)
 
-                if (r >= n) {
-                    if (x > q)
+                if (r >= $n) {
+                    if (x > $q)
                         if (x < $minimum)
-                            return (((x - q - 1) % n) + $minimum)
+                            return (((x - $q - 1) % $n) + $minimum)
 
-                    if (x > p)
-                        if (x <= p + n - ($minimum - 1 - q))
-                            return ((x - q - 1 - (p - $minimum + 1)) % n) + $minimum)
+                    if (x > $p)
+                        if (x <= $p + $n - ($minimum - 1 - $q))
+                            return (((x - $q - 1 - ($p - $minimum + 1)) % $n) + $minimum)
                 }
 
-                return x
+                /* ask the caller to drop the number */
+                return -1
             }
             
             /* instantiate array a[]; numbers are expected to be on a separate line each */
             $(echo "$numbers" | awk '{printf "a[%d]=%s\n", NR - 1, $1}')
 
-            for (i = 0; i < $(echo "$numbers" | wc -l); ++i) 
-                w(a[i])
-            " | abc \
+            for (i = 0; i < $number_of_numbers; ++i) {
+                y = w(a[i])
+                if (y >= 0) y
+            }
+        " | abc \
     )
-
 }
 
 
@@ -197,10 +227,13 @@ request_random_numbers() {
     # input base of bc command
     [ "$data_type" = hex16 ] && local ibase=16 || local ibase=10
 
+    # define the parameters needed for function wrap_numbers; do this outside the loop for efficiency
+    initialize_parameters
+
     until is_zero $amount; do
 
         # ANU's QRNG can only return a maximum of 1024 random numbers per request
-        local length=$(( $amount > 1024 ? 1024 : $amount ))
+        local length=$(( $amount >= 1024 ? 1024 : $amount ))
 
         # request a JSON containing length-many random numbers
         local url="https://qrng.anu.edu.au/API/jsonI.php?length=${length}&type=${data_type}${block_size_request}"
@@ -218,12 +251,13 @@ request_random_numbers() {
         # make sure that numbers are between $minimum and $maximum inclusive; this updates numbers variable
         wrap_numbers
 
-        # print them out
-        echo "$numbers"
+        # print numbers and update number of random intergers remaining to request
+        if [ ${#numbers} -ne 0 ]; then
+            echo "$numbers"
+            local actual_length=$(echo "$numbers" | wc -l)
+            amount=$(( $amount - $actual_length ))
+        fi
 
-        # update number of random intergers remaining to request
-        local actual_length=$(echo "$numbers" | wc -l)
-        amount=$(( $amount - $actual_length ))
     done
 }
 
@@ -264,6 +298,12 @@ err_usage() {
 }
 
 
+print_usage() {
+    echo 'Usage: qrng [-b <base in the range [2, 16]> | -h] [min possible number]' \
+         '<max possible number at most 16**2048 - 1> <number of random integers to request>' >&2
+}
+
+
 extract_arguments() {
     # default base of random numbers is 10
     base=10
@@ -276,26 +316,26 @@ extract_arguments() {
                 else
                     base=$OPTARG
                     shift 2
+                    OPTIND=$(( $OPTIND - 2 ))
                 fi
                 ;;
 
             h)
-                echo 'Usage: qrng [-b <base in the range [2, 16]> | -n] <max possible number at most 16**2048 - 1>' \
-                     '<number of random integers to request>' >&2
+                print_usage
                 exit 0
                 ;;
 
             *)
-                err_usage "$OPTARG is not a valid option"
+                err_usage "-$OPTARG is not a valid option"
                 ;;
         esac
     done
 
+    # NOTE: arguments MUST have been shifted above
     for arg in "$@"; do
         [ -z "$arg" ] && err_usage "one of the non-optional arguments is empty" 
     done
 
-    # NOTE: arguments MUST have been shifted above
     if [ $# -eq 2 ]; then
         max_integer=$(hex_to_int $1)
         amount=$(hex_to_int $2)
@@ -303,8 +343,12 @@ extract_arguments() {
         min_integer=$(hex_to_int $1)
         max_integer=$(hex_to_int $2)
         amount=$(hex_to_int $3)
+    elif [ $# -eq 0 ]; then
+        print_usage
+        exit 1
     else
-        err_usage "number of non-optional arguments must be at least 2 and at most 3" 
+        print_usage 
+        exit 1
     fi
 
     # using 'abc' in all the tests below is necessary because this script accepts arbritrarily large arguments
@@ -316,7 +360,7 @@ extract_arguments() {
         err_usage "maximum possible value of random numbers must be at least 1"
     fi
 
-    if [ $(echo "$min_integer >= $max_integer" | abc) -eq 1 ]; then
+    if [ ! -z "$min_integer" ] && [ $(echo "$min_integer >= $max_integer" | abc) -eq 1 ]; then
         err_usage "the minimum possible value must be strictly less than the maximum"
     fi
 
@@ -337,12 +381,13 @@ extract_arguments() {
     else
         data_type='hex16'
         block_size=$(calc_block_size "$max_integer")
-        abs_max=$(echo "16^(block_size*2) - 1"| abc)
 
         # check if maximum number of hex digit pairs is exceeded
         if [ "$block_size" -gt 1024 ]; then
             err_usage 'maximum possible random number must not exceed 16**2048 - 1' 
         fi
+
+        abs_max=$(echo "16^($block_size*2) - 1"| abc)
     fi
 }
 
