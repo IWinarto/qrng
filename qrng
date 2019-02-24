@@ -83,33 +83,90 @@ check_request() {
 
 wrap_numbers() {
     # This is a helper function for request_random_non_negative_numbers. It makes sure that all non-negative integers
-    # in $numbers are at least $minimum and at most $mod - 1.
+    # in $numbers are at least $minimum and at most $maximum.
     #
     # QRNG returns numbers that are either between 0 and 255, or 0 and 65535, or 0 and 16**(block_size * 2) - 1. Thus, 
-    # even if the user specifies the minimum possible value to be 0, QRNG does not provide an API that allows the user 
-    # to specify the maximum possible value other than the aformentioned upper limits. This is the reason why this 
-    # function is necessary to provide an API that gives the user the freedom to choose a minimum and a maximum (with 
-    # the caveat that both min and max are at least 0 and min < max).
+    # the QRNG JSON API does not provide the capability to specify minimum and maximum numbers. This is the reason why 
+    # this function is necessary to provide an API that gives the user the freedom to choose a minimum and a maximum, 
+    # and at the same time guarantees that the range [minimum, maximum] is uniformly random.
+    #
+    # This function does not provide any guarantee to the result if minimum is not strictly less than maximum, or 
+    # minimum and maximum are not non-negative integers.
 
-    # The "else" part can achieve the same result as the "if" part but it's more expensive; so skip it if unnecessary
-    if [ $minimum -eq 0 ]; then
-        { echo "obase=$obase; ibase=$ibase" && printf "%s %% $mod\n" $numbers; } | abc
+    # make sure that the base of the following parameters are $ibase
+    abs_max=$(echo "obase=$ibase; ibase=10; $abs_max" | abc)
+    minimum=$(echo "obase=$ibase; ibase=10; $minimum" | abc)
+    maximum=$(echo "obase=$ibase; ibase=10; $maximum" | abc)
 
-    else
+    # Check the documentation on the GitHub repo to understand how this wrapping retains uniform randomness.
+    #
+    # The following describes the core of the algorithm:
+    #
+    #       Require: 0 <= minimum < maximum <= abs_max
+    #
+    #       The aim of the algo is to bijectively map every NON-overlapping sub-range of [0, abs_max] that is not
+    #       [minimum, maximum] but has the same length as the sub-range [minimum, maximum] to that same sub-range 
+    #       [minimum, maximum]. This is how uniform randomness is retained for the sub-range [minimum, maximum], 
+    #       while keeping most of the random numbers outside the sub-range, provided that [0, abs_max] is also 
+    #       uniformly random.
+    #
+    #       n is the length of the inclusive range [minimum, maximum].
+    #
+    #       q is the upper limit of the inclusive range [0, q], such that the length of the range (q + 1) is the 
+    #       biggest multiple of n that is at most minimum - 1.
+    #       
+    #       p is the upper limit of the inclusive range [maximum + 1, p], such that the length of the range is a
+    #       multiple of n, and p is at most abs_max.
+    #
+    #       r is the count of the remaining possible numbers in the ranges [q + 1, minimum - 1] and [p + 1, abs_max]
+    #       combined if and only if (q + 1 < minimum - 1) and (p + 1 < abs_max). Therefore, r is expected to be 
+    #       0 <= r <= 2*(n-1). 
+    #
+    #       x is a random number to be mapped into [minimum, maximum], and is expected to be 0 <= x <= abx_max
+    #
+    #       let k and d be integers s.t. k >= 0 and 0 <= d < n:
+    #           if minimum <= x <= maximum, then x maps to itself
+    #           if x <= q and x = k*n + d, then x maps to minimum + d
+    #           if maximum < x <= p and x - maximum - 1 = k*n + d, then x maps to minimum + d 
+    #           if r >= n
+    #               if q < x < minimum and x - q - 1 = k*n + d, then x maps to minimum + d
+    #               if p < x <= p + n - (minimum - 1 - q) and x - q - 1 - (p - minimum + 1) = k*n + d, 
+    #                   then x maps to minimum + d
+    #
+    #               The last two if conditions imply the last possible sub-range with length n to map is the union of
+    #               [q + 1, minimum - 1] and [p + 1, p + n - (minimum - 1 - q)]
+    #
+    #       Any random number x that doesn't satisfy the above is dropped/ignored. This implies if r == 0 or r == n, no
+    #       random numbers are dropped; if 0 < r < n, r random numbers are dropped; and if r >=n, at most 2*(n-1) - n = 
+    #       n - 2 random numbers are dropped.
+
+    numbers=$( \
         echo "
             obase=$obase 
             ibase=$ibase
 
-            define w(x) {
-                while ( x < $minimum ) {
-                    x = x + $minimum
-                    x = x % $mod
-                }
+            n = $maximum - $minimum + 1
+            q = ($minimum / n) * n - 1
+            p = (($abs_max - $maximum) / n) * n + $maximum
 
-                if ( x > $maximum ) {
-                    x = x % $mod
-                    if ( x < $minimum ) 
-                        x = w(x)
+            r = ($minimum - 1 - q) + ($abs_max - p)
+
+            define w(x) {
+                if (x <= q)
+                    return ((x % n) + $minimum)
+
+                if (x > $maximum)
+                    if (x <= p)
+                        return (((x - $maximum - 1) % n) + $minimum)
+
+                if (r >= n) {
+                    if (x > q)
+                        if (x < $minimum)
+                            return (((x - q - 1) % n) + $minimum)
+
+                    if (x > p)
+                        if (x <= p + n - ($minimum - 1 - q))
+                            return ((x - q - 1 - (p - $minimum + 1)) % n) + $minimum)
                 }
 
                 return x
@@ -120,25 +177,25 @@ wrap_numbers() {
 
             for (i = 0; i < $(echo "$numbers" | wc -l); ++i) 
                 w(a[i])
-        " | abc
-    fi
+            " | abc \
+    )
+
 }
 
 
-request_random_non_negative_numbers() {
+request_random_numbers() {
     # This requests at most max(ISO C signed long)-many random numbers between $minimum and $mod - 1 inclusive.
 
     local obase=$1                                      # output base of bc command
     local amount=$2                                     # number of random integers to request <= 2**31 - 1
     local minimum=${3:-0}                               # minimum possible value of any random integer (default 0)
-    local mod=$(echo "$4 + 1" | abc)                    # maximum possible value of any random integer + 1
+    local maximum=$4                                    # maximum possible value of any random integer
     local data_type=$5                                  # QRNG data type is either uint8, uint16, or hex16
-    local block_size_request=${6:+&size=$6}             # if given, then equal to &size=$5 (must not exceed 1024)
+    local abs_max=$6                                    # the absolute maximum of the data type
+    local block_size_request=${7:+&size=$7}             # if given, then equal to &size=$7 (must not exceed 1024)
 
     # input base of bc command
     [ "$data_type" = hex16 ] && local ibase=16 || local ibase=10
-    # make sure that the base of mod's value is ibase
-    mod=$(echo "obase=$ibase; ibase=10; $mod" | abc)
 
     until is_zero $amount; do
 
@@ -158,11 +215,14 @@ request_random_non_negative_numbers() {
         # make sure hexadecimal letter-digits are in upper-case letters for bc to process
         [ "$data_type" = hex16 ] && numbers=$(echo "$numbers" | tr a-f A-F)
 
-        # make sure that numbers are between $minimum and $mod - 1 inclusive; this prints numbers to stdout
-        wrap_numbers 
+        # make sure that numbers are between $minimum and $maximum inclusive; this updates numbers variable
+        wrap_numbers
+
+        # print them out
+        echo "$numbers"
 
         # update number of random intergers remaining to request
-        local actual_length=$(echo "$json" | sed -E 's/.*"length":([^,]+).*/\1/')
+        local actual_length=$(echo "$numbers" | wc -l)
         amount=$(( $amount - $actual_length ))
     done
 }
@@ -267,14 +327,17 @@ extract_arguments() {
     # do nothing if requested 0 amount 
     is_zero "$amount" && exit 0
 
-    # set request arguments for ANU's QRNG API; note that $max_integer can be bigger than POSIX precision
+    # set arguments for QRNG@ANU JSON API and wrapping; note that $max_integer can be bigger than POSIX precision
     if [ ${#max_integer} -le 3 ] && [ "$max_integer" -le 255 ]; then
         data_type='uint8'
+        abs_max=255
     elif [ ${#max_integer} -le 5 ] && [ "$max_integer" -le 65535 ]; then
         data_type='uint16'
+        abs_max=65535
     else
         data_type='hex16'
         block_size=$(calc_block_size "$max_integer")
+        abs_max=$(echo "16^(block_size*2) - 1"| abc)
 
         # check if maximum number of hex digit pairs is exceeded
         if [ "$block_size" -gt 1024 ]; then
@@ -309,7 +372,7 @@ until is_zero "$amount"; do
         " | abc \
     )
 
-    request_random_non_negative_numbers "$base" "$chunk_size" "$min_integer" "$max_integer" "$data_type" "$block_size"
+    request_random_numbers "$base" "$chunk_size" "$min_integer" "$max_integer" "$data_type" "$abs_max" "$block_size"
 
     amount=$(echo "$amount - $chunk_size" | abc)
 done 
