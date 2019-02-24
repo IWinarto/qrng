@@ -16,7 +16,7 @@ the following ranges only per request:
 
 * ![](https://latex.codecogs.com/gif.latex?\left[0,&space;255&space;\right&space;])
 * ![](https://latex.codecogs.com/gif.latex?\left[0,&space;65535&space;\right&space;])
-* ![](https://latex.codecogs.com/gif.latex?\left[0,&space;16^{2048}&space;-1&space;\right&space;])
+* ![](https://latex.codecogs.com/gif.latex?$\left[0,16^{2\times\text{block\_size}}-1&space;\right&space;]$)
 
 where, ![](https://latex.codecogs.com/gif.latex?$1&space;\leq&space;\text{block\_size}&space;\leq&space;1024$). This 
 means the user cannot request a custom range of random non-negative numbers.
