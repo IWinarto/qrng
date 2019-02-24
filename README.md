@@ -39,8 +39,8 @@ base-16. This script extends the number of bases available by providing base-2 u
 
 POSIX.1-2017 defines the maximum limit of positive integer of any expression to be the maximum of ISO C `signed long`
 type, which is at least ![](https://latex.codecogs.com/gif.latex?$2^{31}-1$). However, QRNG can provide random numbers 
-that are as large as $16^2048 - 1$. This script utilizes POSIX `bc` to do arbitrary precision calculations to overcome 
-the the limit.
+that are as large as ![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$). This script utilizes POSIX 
+`bc` to do arbitrary precision calculations to overcome the the limit.
 
 
 ## Usage:
