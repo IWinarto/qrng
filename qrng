@@ -10,8 +10,8 @@
 # Description:                                                                                                      #
 #                                                                                                                   #
 #    This POSIX-compliant Shell script sends HTTP GET requests to ANU's QRNG to get random non-negative integers    #
-# printed out as numbers in some specified base. ANU is The Australian National University, and QRNG stands for     #
-# Quantum Random Number Generator.                                                                                  #
+# printed out as numbers in some user-specified base. ANU is The Australian National University, and QRNG stands    #
+# for Quantum Random Number Generator.                                                                              #
 #                                                                                                                   #
 # Usage:                                                                                                            #
 #                                                                                                                   #
