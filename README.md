@@ -12,7 +12,7 @@ ANU is The Australian National University, and QRNG stands for Quantum Random Nu
 ### Problem 1
 
 The [QRNG@ANU JSON API](https://qrng.anu.edu.au/API/api-demo.php) returns random non-negative integers in either one of 
-the following ranges only per request:
+the following ranges only, per request:
 
 * ![](https://latex.codecogs.com/gif.latex?\left[0,&space;255&space;\right&space;])
 * ![](https://latex.codecogs.com/gif.latex?\left[0,&space;65535&space;\right&space;])
