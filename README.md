@@ -20,7 +20,7 @@ the following ranges only per request:
 
 where, ![](https://latex.codecogs.com/gif.latex?$1\leq&space;\\text{block\\_size}\leq1024$), and 
 ![](https://latex.codecogs.com/gif.latex?$\\text{block\\_size}$) is the number of pairs of hexadecimal digits. This 
-means the user cannot request a custom range of random non-negative numbers.
+means users cannot request a custom range of random non-negative numbers.
 
 This script enables the user to specify a custom range of random non-negative numbers up to the QRNG limit 
 ![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$) with one very important property:
