@@ -3,7 +3,8 @@
 ## Description
 
 This POSIX-compliant Shell script sends HTTP GET requests to [ANU's QRNG](https://qrng.anu.edu.au/) to get random
-non-negative integers printed out as numbers in some user-specified base. 
+non-negative integers printed out as numbers in some user-specified base. Tests seem to suggest that the distribution of
+the numbers are ["truly random"](http://qrng.anu.edu.au/FAQ.php).
 
 ANU is The Australian National University, and QRNG stands for Quantum Random Number Generator.
 
