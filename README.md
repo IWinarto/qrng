@@ -36,7 +36,7 @@ the shell function `wrap_numbers`.
 ### Problem 2
 
 The same API also does not provide the capability of specifying the base of the random numbers other than base-10 and
-base-16. This script extends the number of bases available by providing base-2 up to base-16.
+base-16. This script extends the number of bases available by providing base-2 up to and including base-16.
 
 ### Problem 3
 
