@@ -48,9 +48,9 @@ arbitrary precision calculations to overcome the limit.
 
 `qrng [-h | -b <base>] [minimum possible number] <maximum possible number> <amount of random numbers>`
 
-* The -h option prints out this usage.
+* The `-h` option prints out this usage.
 
-* If the -b option is given, the random numbers printed out will be in the given base. The specified base must be an 
+* If the `-b` option is given, the random numbers printed out will be in the given base. The specified base must be an 
 integer at least equal to 2 and at most 16. If this option is not specified, the default base is 10.
 
 * `[minimum possible number]` optional argument is the minimum possible value of random integers requested. It must 
