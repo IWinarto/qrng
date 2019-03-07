@@ -25,7 +25,7 @@ This script enables the user to specify any custom range of random non-negative 
 ![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$) with one very important property, assuming the
 underlying distribution is truly random:
 
-    the custom range that the user specified is still uniformly random.
+    any custom range that the user specified is still uniformly random.
 
 Details of the algorithm that preserves uniform randomness of custom ranges will be provided in this document in the
 future. If you want to read about it now, a detailed although incomplete explanation of the algorithm is provided under
