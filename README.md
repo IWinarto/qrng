@@ -54,9 +54,9 @@ arbitrary precision calculations to overcome the limit.
 integer at least equal to 2 and at most 16. If this option is not specified, the default base is 10.
 
 * [minimum possible number] is the minimum possible value of random integers requested. It must at least be equal to
-0. If this is not specified, 0 is assumed. 
+\ 0. If this is not specified, 0 is assumed. 
 
-* \<maximum possible number> argument is the maximum possible value of any random number requested. It must not exceed
+* \<maximum possible number> argument is the maximum possible value of random integers requested. It must not exceed
 QRNG's limit ![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$), and must at least be equal to 1.
 
 * The final argument is the amount of random numbers to be requested (at least 0). If this argument is 0,  then this
