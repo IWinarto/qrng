@@ -51,7 +51,7 @@ arbitrary precision calculations to overcome the limit.
 * The -h option prints out this usage.
 
 * If the -b option is given, the random numbers printed out will be in the given base. The specified base must be an 
-integer at least equal to 2 and at most 16. If this option is not specified, the default base i s 10.
+integer at least equal to 2 and at most 16. If this option is not specified, the default base is 10.
 
 * [minimum possible number] is the minimum possible value of any random number requested. It must at least be equal to
 \0. If this is not specified, 0 is assumed. 
