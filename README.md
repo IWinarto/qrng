@@ -59,8 +59,8 @@ at least be equal to 0. If this is not specified, 0 is assumed.
 * `<maximum possible number>` argument is the maximum possible value of random integers requested. It must not exceed
 QRNG's limit ![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$), and must at least be equal to 1.
 
-* The final argument is the amount of random numbers to be requested (at least 0). If this argument is 0,  then this
-script will not make requests at all, and the exit status is set to 0.                          
+* The final argument is the amount of random numbers to request (at least 0). If this argument is 0,  then this script 
+will not make requests at all, and the exit status is set to 0.                          
 
 * The minimum possible number, maximum possible number, and amount of random numbers to request can be given as
 hexadecimal numbers and/or decimal numbers. A hexadecimal argument must be prefixed by the characters `0x` (in that
