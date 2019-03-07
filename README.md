@@ -29,7 +29,7 @@ underlying distribution is truly random:
 
 Details of the algorithm that preserves uniform randomness of custom ranges will be provided in this document in the
 future. If you want to read about it now, a detailed although incomplete explanation of the algorithm is provided under
-the shell function `wrap_numbers`.
+the Shell function `wrap_numbers`.
 
 ### Problem 2
 
