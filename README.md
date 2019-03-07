@@ -13,9 +13,9 @@ ANU is The Australian National University, and QRNG stands for Quantum Random Nu
 The [QRNG@ANU JSON API](https://qrng.anu.edu.au/API/api-demo.php) returns random non-negative integers in either one of 
 the following ranges only, per request:
 
-* ![](https://latex.codecogs.com/gif.latex?\left[0,&space;255&space;\right&space;])
-* ![](https://latex.codecogs.com/gif.latex?\left[0,&space;65535&space;\right&space;])
-* ![](https://latex.codecogs.com/gif.latex?$[0,&space;16^{2\times\\text{block\\_size}}-1]$)
+* ![](https://latex.codecogs.com/gif.latex?\left[0,&space;255\right])
+* ![](https://latex.codecogs.com/gif.latex?\left[0,&space;65535\right])
+* ![](https://latex.codecogs.com/gif.latex?\left[0,&space;16^{2\times\\text{block\\_size}}-1\right])
 
 where, ![](https://latex.codecogs.com/gif.latex?$1\leq&space;\\text{block\\_size}\leq1024$), and 
 ![](https://latex.codecogs.com/gif.latex?$\\text{block\\_size}$) is the number of pairs of hexadecimal digits. This 
