@@ -80,4 +80,4 @@ of `sed` is ignored. This causes the script to not work properly. This issue doe
 Please open issues if you discover other compatibility problems.
 
 ---
-### THIS DOC IS INCOMPLETE - MORE TO FOLLOW
+### This doc is incomplete - more to follow.
