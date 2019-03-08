@@ -44,7 +44,7 @@ large as ![](https://latex.codecogs.com/gif.latex?$16^{2048}&space;-&space;1$). 
 arbitrary precision calculations to overcome the limit.
 
 
-## Usage:
+## Usage
 
 `qrng [-h | -b <base>] [minimum possible number] <maximum possible number> <amount of random numbers>`
 
