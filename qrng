@@ -110,8 +110,8 @@ initialize_parameters() {
 
 
 wrap_numbers() {
-    # This is a helper function for request_random_non_negative_numbers. It makes sure that all non-negative integers
-    # in $numbers are at least $minimum and at most $maximum.
+    # This is a helper function for request_random_numbers. It makes sure that all non-negative integers in $numbers
+    # are at least $minimum and at most $maximum.
     #
     # QRNG returns numbers that are either between 0 and 255, or 0 and 65535, or 0 and 16**(block_size * 2) - 1. Thus, 
     # the QRNG JSON API does not provide the capability to specify minimum and maximum numbers. This is the reason why 
